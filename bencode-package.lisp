@@ -3,8 +3,7 @@
 (defpackage :com.schobadoo.bencode
   (:nicknames :bencode)
   (:use :cl)
-  (:export :encode
-           :decode
-           :get-bdictionary
-           :bdictionary-p
-           :bdictionary-hide-binary))
+  (:export #:encode
+           #:decode
+           #:get-bdictionary
+           #:bdictionary-hide-binary))

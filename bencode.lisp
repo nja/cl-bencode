@@ -1,3 +1,5 @@
+;;; -*- Mode: LISP; Syntax: Common-Lisp; Package: COM.SCHOBADOO.BENCODE -*-
+
 (in-package :com.schobadoo.bencode)
 
 (defun maybe-read-char (stream chars)
@@ -18,12 +20,12 @@
 (defun encode (x &optional (array (make-array *encode-chunk-size*
                                               :element-type '(unsigned-byte 8)
                                               :adjustable t :fill-pointer 0)))
-  (cond ((bdictionary-p x) (encode-dictionary x array)) ; Must preceed the list case
-        ((listp x) (encode-list x array))
-        ((integerp x) (encode-integer x array))
-        ((stringp x) (encode-string x array))
-        ((symbolp x) (encode-string (format nil "SYMBOL:~a" x) array))
-        (t (error "Can only encode bdictionaries, lists, strings and integers"))))
+  (etypecase x
+    (bdictionary (encode-dictionary x array))
+    (cons (encode-list x array))
+    (integer (encode-integer x array))
+    (string (encode-string x array))
+    (symbol (encode-string (format nil "SYMBOL:~a" x) array))))
 
 (defun encode-list (list array)
   (vector-push-extend-string "l" array)
@@ -33,7 +35,7 @@
 
 (defun encode-dictionary (dictionary array)
   (vector-push-extend-string "d" array)
-  (dolist (x (rest dictionary))
+  (dolist (x (bdictionary->alist dictionary))
     (destructuring-bind (k . v) x
       (encode k array)
       (encode v array)))
@@ -110,46 +112,6 @@
             (push (decode stream) list)))
     (nreverse list)))
 
-(defun make-bdictionary (list)
-  (cons 'bdictionary
-        (sort (loop for (k v) on list by #'cddr
-                 collect (cons k v))
-              #'string<
-              :key #'car)))
-
-(defun bdictionary-p (x)
-  (when (listp x)
-    (eq (first x) 'bdictionary)))
-
 (defun decode-dictionary (stream)
   (make-bdictionary (decode-list stream #\d)))
-
-(defun bdictionary-hide-binary (x)
-  (cond ((bdictionary-p x)
-         (cons 'bdictionary
-          (mapcar (lambda (x)
-                    (destructuring-bind (k . v) x
-                     (if (binary-bdictionary-key-p k)
-                         (cons k (list 'binary (length v)))
-                         (cons k (bdictionary-hide-binary v)))))
-                  (rest x))))
-        ((listp x) (mapcar #'bdictionary-hide-binary x))
-        (t x)))
-
-(defparameter *binary-bdictionary-keys* (list "pieces"))
-
-(defun binary-bdictionary-key-p (key)
-  (find key *binary-bdictionary-keys* :test #'equal))
-
-(defun get-bdictionary (key bdictionary)
-  (if (bdictionary-p bdictionary)
-      (cdr (assoc key (rest bdictionary) :test #'equal))
-      (error "Not a bdictionary")))
-
-(defun bytes-to-string (bytes)
-  (loop with string = (make-string (length bytes))
-       for i from 0
-       for b across bytes
-       do (setf (elt string i) (code-char b))
-       finally (return string)))
 
