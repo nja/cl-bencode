@@ -8,4 +8,4 @@
   :components ((:file "bencode-package")
                (:file "bdictionary" :depends-on ("bencode-package"))
                (:file "bencode" :depends-on ("bencode-package" "bdictionary")))
-  :depends-on (:trivial-utf-8))
+  :depends-on (:flexi-streams))

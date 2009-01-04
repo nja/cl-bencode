@@ -2,70 +2,64 @@
 
 (in-package :com.schobadoo.bencode)
 
-(defun maybe-read-char (stream chars)
-  (let ((chars (if (characterp chars)
-                   (list chars)
-                   chars)))
-    (if (find (peek-char nil stream) chars)
-        (read-char stream)
-        nil)))
-
 (defun must-read-char (stream char)
-  (if (char= (read-char stream) char)
+  (if (eq (read-byte stream) (char-code char))
       t
       (error "Didn't read ~a" char)))
 
-(defparameter *encode-chunk-size* 64)
+(defparameter *external-format* (flex:make-external-format :utf-8))
 
-(defun encode (x &optional (array (make-array *encode-chunk-size*
-                                              :element-type '(unsigned-byte 8)
-                                              :adjustable t :fill-pointer 0)))
-  (etypecase x
-    (bdictionary (encode-dictionary x array))
-    (cons (encode-list x array))
-    (integer (encode-integer x array))
-    (string (encode-string x array))
-    (symbol (encode-string (format nil "SYMBOL:~a" x) array))))
+(defun string-to-octets (string)
+  (flex:string-to-octets string :external-format *external-format*))
 
-(defun encode-list (list array)
-  (vector-push-extend-string "l" array)
+(defun octets-to-string (octets)
+  (flex:octets-to-string octets :external-format *external-format*))
+
+(defgeneric encode (object stream)
+  (:documentation "Encode object and write it to stream.  If stream is
+nil, an in-memory stream will be used and the resulting sequence
+returned."))
+
+(defmethod encode (object (stream (eql nil)))
+  (flex:with-output-to-sequence (stream)
+    (encode object stream)))
+
+(defmethod encode ((list list) (stream stream))
+  (write-byte (char-code #\l) stream)
   (dolist (x list)
-    (encode x array))
-  (vector-push-extend-string "e" array))
+    (encode x stream))
+  (write-byte (char-code #\e) stream))
 
-(defun encode-dictionary (dictionary array)
-  (vector-push-extend-string "d" array)
+(defmethod encode ((dictionary bdictionary) (stream stream))
+  (write-byte (char-code #\d) stream)
   (dolist (x (bdictionary->alist dictionary))
     (destructuring-bind (k . v) x
-      (encode k array)
-      (encode v array)))
-  (vector-push-extend-string "e" array))
+      (encode k stream)
+      (encode v stream)))
+  (write-byte (char-code #\e) stream))
 
-(defun encode-string (string array)
-  (encode-string-length (length string) array)
-  (vector-push-extend-string string array))
+(defmethod encode ((string string) (stream stream))
+  (let ((octets (string-to-octets string)))
+    (write-sequence (string-to-octets (format nil "~a:" (length octets))) stream)
+    (write-sequence octets stream)))
 
-(defun encode-string-length (length array)
-  (vector-push-extend-string (format nil "~a:" length) array))
+(defmethod encode ((integer integer) (stream stream))
+  (write-sequence (string-to-octets (format nil "i~ae" integer)) stream))
 
-(defun vector-push-extend-string (string vector)
-  (loop for c across string
-       do (vector-push-extend (char-code c) vector))
-  vector)
+(defmethod encode ((sequence array) (stream stream))
+  (write-sequence (string-to-octets (format nil "~a:" (length sequence))) stream)
+  (write-sequence sequence stream))
 
-(defun encode-integer (integer array)
-  (vector-push-extend-string (format nil "i~ae" integer) array))
-
-(defun decode (stream)
-  (let ((c (peek-char nil stream nil)))
-    (if (null c)
-        nil
-        (ccase c
-          (#\i (decode-integer stream))
-          ((#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9)
-           (decode-string stream))
-          (#\l (decode-list stream))
-          (#\d (decode-dictionary stream))))))
+(defun decode (stream &key (binary nil))
+  (let ((c (code-char (flex:peek-byte stream))))
+    (ccase c
+      (#\i (decode-integer stream))
+      ((#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9)
+       (if binary
+           (decode-binary-string stream)
+           (decode-string stream)))
+      (#\l (decode-list stream))
+      (#\d (decode-dictionary stream)))))
 
 (defun char-integer-p (char)
   (case char
@@ -76,42 +70,57 @@
   (when (char-integer-p char)
     (- (char-int char) (char-int #\0))))
 
-(defun decode-integer (stream &optional (end-char #\e))
+(defun maybe-read-char (stream char)
+  (if (eq (flex:peek-byte stream) (char-code char))
+      (code-char (read-byte stream))
+      nil))
+
+(defun decode-integer (stream)
   (must-read-char stream #\i)
   (let* ((minus (maybe-read-char stream #\-))
          (integers (read-integers stream))
          (number (parse-integer integers)))
     (when (and (= number 0) (or minus (> (length integers) 1)))
       (error "Zero must be i0e"))
-    (prog1 (if minus
-               (- number)
-               number)
-      (must-read-char stream end-char))))
+    (must-read-char stream #\e)
+    (if minus
+        (- number)
+        number)))
 
 (defun read-integers (stream)
   (with-output-to-string (string)
-    (loop for peek = (peek-char nil stream)
-       while (char-integer-p peek)
-       do (write-char (read-char stream) string))))
+    (loop for octet = (flex:peek-byte stream)
+       while (char-integer-p (code-char octet))
+       do (write-char (code-char (read-byte stream)) string))))
 
 (defun decode-string (stream)
   (let* ((length (parse-integer (read-integers stream)))
-         (string (make-string length)))
+         (octets (make-array length :element-type '(unsigned-byte 8))))
     (must-read-char stream #\:)
-    (loop for i below length
-       do (setf (elt string i) (read-char stream)))
-    string))
+    (read-sequence octets stream)
+    (octets-to-string octets)))
 
-(defun decode-list (stream &optional (begin-char #\l))
-  (must-read-char stream begin-char)
-  (let ((list nil))
-    (loop for c = (read-char stream)
-       until (char= c #\e)
-       do (progn
-            (unread-char c stream)
-            (push (decode stream) list)))
-    (nreverse list)))
+(defun decode-list (stream)
+  (must-read-char stream #\l)
+  (loop with list
+     until (maybe-read-char stream #\e)
+     do (push (decode stream) list)
+     finally (return (nreverse list))))
+
+(defun decode-binary-string (stream)
+  (let* ((length (parse-integer (read-integers stream)))
+         (octets (make-array length :element-type '(unsigned-byte 8))))
+    (must-read-char stream #\:)
+    (read-sequence octets stream)
+    octets))
 
 (defun decode-dictionary (stream)
-  (make-bdictionary (decode-list stream #\d)))
+  (must-read-char stream #\d)
+  (loop with list
+     until (maybe-read-char stream #\e)
+     do (let* ((key (decode-string stream))
+               (value (decode stream :binary (binary-bdictionary-key-p key))))
+          (push value list)
+          (push key list))
+     finally (return (make-bdictionary list))))
 
