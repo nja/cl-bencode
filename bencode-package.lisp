@@ -1,8 +1,10 @@
-(in-package :cl-user)
+;;; -*- Mode: Lisp -*-
 
-(defpackage :com.schobadoo.bencode
-  (:nicknames :bencode)
-  (:use :cl)
+(in-package #:cl-user)
+
+(defpackage #:com.schobadoo.bencode
+  (:nicknames #:bencode)
+  (:use #:cl)
   (:export #:encode
            #:decode
            #:bdictionary
