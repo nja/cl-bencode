@@ -7,6 +7,5 @@
   (:use #:cl)
   (:export #:encode
            #:decode
-           #:bdictionary
-           #:get-bdictionary
-           #:bdictionary-hide-binary))
+           #:get-dictionary
+           #:dictionary-hide-binary))

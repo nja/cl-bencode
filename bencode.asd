@@ -9,6 +9,6 @@
   :author "Johan Andersson <johan@nforced.com>"
   :license "MIT"
   :components ((:file "bencode-package")
-               (:file "bdictionary" :depends-on ("bencode-package"))
-               (:file "bencode" :depends-on ("bencode-package" "bdictionary")))
+               (:file "dictionary" :depends-on ("bencode-package"))
+               (:file "bencode" :depends-on ("bencode-package" "dictionary")))
   :depends-on (#:flexi-streams))
