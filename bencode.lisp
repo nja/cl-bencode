@@ -25,10 +25,17 @@
 
 (in-package #:com.schobadoo.bencode)
 
+(define-condition unexpected-octet (error)
+  ((expected-octet :initarg :expected-octet :reader expected-octet)
+   (actual-octet :initarg :actual-octet :reader actual-octet)))
+
 (defun must-read-char (stream char)
-  (if (eq (read-byte stream) (char-code char))
-      t
-      (error "Didn't read ~a" char)))
+  (restart-case
+      (let ((byte (read-byte stream)))
+        (if (eq byte (char-code char))
+            t
+            (error "Expected 0x~x got 0x~x" (char-code char) byte)))
+    (continue () t)))
 
 (defparameter *external-format* (flex:make-external-format :utf-8))
 
