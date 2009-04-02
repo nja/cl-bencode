@@ -9,10 +9,10 @@ Features
 
 cl-bencode supports all four different types of bencode values.
 
-* byte strings
+* byte strings as strings or byte vectors
 * integers as integers
 * lists as lists
-* and dictionaries
+* and dictionaries as hashtables
 
 It's proven capable of roundtripping several torrents found in the
 wild.
@@ -23,11 +23,11 @@ Example
     CL-USER> (with-open-file (stream "/tmp/t.torrent" :element-type '(unsigned-byte 8))
                (bencode:decode (flex:make-flexi-stream stream)))
     #<COM.SCHOBADOO.BENCODE:BDICTIONARY {C06E8D9}>
-    CL-USER> (bencode:get-bdictionary "announce-list" *)
+    CL-USER> (gethash "announce-list" *)
     (("http://tracker.thepiratebay.org/announce")
      ("udp://tracker.thepiratebay.org:80/announce"))
     T
-    CL-USER> (bencode:get-bdictionary "info" **)
+    CL-USER> (gethash "info" **)
     #<COM.SCHOBADOO.BENCODE:BDICTIONARY {C4D3F81}>
     T
     CL-USER> (ironclad:digest-sequence :sha1 (bencode:encode *** nil))
