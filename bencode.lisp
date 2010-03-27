@@ -37,13 +37,13 @@
             (error "Expected 0x~x got 0x~x" (char-code char) byte)))
     (continue () t)))
 
-(defparameter *external-format* (flex:make-external-format :utf-8))
+(defparameter +ascii+ (flex:make-external-format :ascii))
 
-(defun string-to-octets (string)
-  (flex:string-to-octets string :external-format *external-format*))
+(defun string-to-octets (string &optional (external-format +ascii+))
+  (flex:string-to-octets string :external-format external-format))
 
-(defun octets-to-string (octets)
-  (flex:octets-to-string octets :external-format *external-format*))
+(defun octets-to-string (octets external-format)
+  (flex:octets-to-string octets :external-format external-format))
 
 (defgeneric encode (object stream)
   (:documentation "Encode object and write it to stream.  If stream is
