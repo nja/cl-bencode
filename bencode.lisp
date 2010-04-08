@@ -1,6 +1,6 @@
 ;;; -*- Mode: LISP -*-
 ;;;
-;;; Copyright (c) 2009 Johan Andersson
+;;; Copyright (c) 2009-2010 Johan Andersson
 ;;;
 ;;; Permission is hereby granted, free of charge, to any person
 ;;; obtaining a copy of this software and associated documentation
