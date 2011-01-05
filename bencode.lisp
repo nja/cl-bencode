@@ -25,6 +25,16 @@
 
 (in-package #:com.schobadoo.bencode)
 
+(defparameter +ascii+ (flex:make-external-format :ascii))
+
+(defparameter +utf-8+ (flex:make-external-format :utf-8))
+
+(defvar *external-format* nil)
+
+(defun external-format (stream)
+  (or *external-format*
+      (flex:flexi-stream-external-format stream)))
+
 (define-condition unexpected-octet (error)
   ((expected-octet :initarg :expected-octet :reader expected-octet)
    (actual-octet :initarg :actual-octet :reader actual-octet)))
@@ -37,30 +47,29 @@
             (error "Expected 0x~x got 0x~x" (char-code char) byte)))
     (continue () t)))
 
-(defparameter +ascii+ (flex:make-external-format :ascii))
-
 (defun string-to-octets (string &optional (external-format +ascii+))
   (flex:string-to-octets string :external-format external-format))
 
 (defun octets-to-string (octets external-format)
   (flex:octets-to-string octets :external-format external-format))
 
-(defgeneric encode (object stream)
-  (:documentation "Encode object and write it to stream.  If stream is
-nil, an in-memory stream will be used and the resulting sequence
-returned."))
+(defgeneric encode (object stream-or-symbol)
+  (:documentation "Encode object and write it to stream or, if
+stream-or-symbol is a symbol, use an in-memory stream and return the
+resulting sequence.  "))
 
-(defmethod encode (object (stream (eql nil)))
-  (flex:with-output-to-sequence (stream)
-    (encode object stream)))
+(defmethod encode (object (external-format-keyword symbol))
+  (let ((*external-format* (flex:make-external-format external-format-keyword)))
+    (flex:with-output-to-sequence (stream)
+      (encode object stream))))
 
-(defmethod encode ((list list) (stream stream))
+(defmethod encode ((list list) (stream flexi-stream))
   (write-byte (char-code #\l) stream)
   (dolist (x list)
     (encode x stream))
   (write-byte (char-code #\e) stream))
 
-(defmethod encode ((dictionary hash-table) (stream stream))
+(defmethod encode ((dictionary hash-table) (stream flexi-stream))
   (write-byte (char-code #\d) stream)
   (dolist (x (dictionary->alist dictionary))
     (destructuring-bind (k . v) x
@@ -68,26 +77,33 @@ returned."))
       (encode v stream)))
   (write-byte (char-code #\e) stream))
 
-(defmethod encode ((string string) (stream stream))
-  (let ((octets (string-to-octets string)))
+(defmethod encode ((string string) (stream flexi-stream))
+  (let ((octets (string-to-octets string (external-format stream))))
     (write-sequence (string-to-octets (format nil "~a:" (length octets))) stream)
     (write-sequence octets stream)))
 
-(defmethod encode ((integer integer) (stream stream))
+(defmethod encode ((integer integer) (stream flexi-stream))
   (write-sequence (string-to-octets (format nil "i~ae" integer)) stream))
 
-(defmethod encode ((sequence array) (stream stream))
+(defmethod encode ((sequence array) (stream flexi-stream))
   (write-sequence (string-to-octets (format nil "~a:" (length sequence))) stream)
   (write-sequence sequence stream))
 
-(defun decode (stream &key (binary nil))
+(defgeneric decode (stream)
+  (:documentation "Decode a bencode object from stream.  If stream is a flexi-stream,
+its external-format will be used for decoding strings.  If stream is
+an ordinary stream, a flexi-stream with an external-format of :utf-8
+will be created and used."))
+
+(defmethod decode ((stream stream))
+  (decode (flex:make-flexi-stream stream :external-format +utf-8+)))
+
+(defmethod decode ((stream flexi-stream))
   (let ((c (code-char (flex:peek-byte stream))))
     (ccase c
       (#\i (decode-integer stream))
       ((#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9)
-         (if binary
-             (decode-binary-string stream)
-             (decode-string stream)))
+         (decode-string stream))
       (#\l (decode-list stream))
       (#\d (decode-dictionary stream)))))
 
@@ -111,7 +127,8 @@ returned."))
          (integers (read-integers stream))
          (number (parse-integer integers)))
     (when (and (= number 0) (or minus (> (length integers) 1)))
-      (error "Zero must be i0e"))
+      (restart-case (error "Zero must be i0e")
+        (continue () 0)))
     (must-read-char stream #\e)
     (if minus
         (- number)
@@ -128,7 +145,22 @@ returned."))
          (octets (make-array length :element-type '(unsigned-byte 8))))
     (must-read-char stream #\:)
     (read-sequence octets stream)
-    (octets-to-string octets)))
+    (loop    ; Loop to allow restarting with several external formats 
+      (restart-case
+          (return ; Return to end loop when decoded without raising a condition
+            (octets-to-string octets (external-format stream)))
+        (use-binary ()
+          :report "Use undecoded binary vector"
+          octets)
+        (set-external-format (external-format)
+          :report "Set external format"
+          :interactive (lambda ()
+                         (format t "Enter an external format keyword: ")
+                         (multiple-value-list (eval (read))))
+          (let ((external-format (flex:make-external-format external-format)))
+            (if *external-format*
+                (setf *external-format* external-format)
+                (setf (flex:flexi-stream-external-format stream) external-format))))))))
 
 (defun decode-list (stream)
   (must-read-char stream #\l)
@@ -149,7 +181,9 @@ returned."))
   (loop with list
         until (maybe-read-char stream #\e)
         do (let* ((key (decode-string stream))
-                  (value (decode stream :binary (binary-dictionary-key-p key))))
+                  (value (if (binary-dictionary-key-p key)
+                             (decode-binary-string stream)
+                             (decode stream))))
              (push value list)
              (push key list))
         finally (return (make-dictionary list))))

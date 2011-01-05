@@ -27,7 +27,7 @@ Example
     (("udp://tracker.openbittorrent.com:80/announce")
      ("http://tracker.openbittorrent.com/announce"))
     T
-    CL-USER> (ironclad:digest-sequence :sha1 (bencode:encode ** nil))
+    CL-USER> (ironclad:digest-sequence :sha1 (bencode:encode ** :utf-8))
     #(182 59 189 138 153 64 38 223 79 48 24 51 171 34 93 41 82 178 25 152)
     CL-USER> (ironclad:digest-file :sha1 "/tmp/torrent")
     #(182 59 189 138 153 64 38 223 79 48 24 51 171 34 93 41 82 178 25 152)

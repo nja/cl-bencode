@@ -5,6 +5,7 @@
 (defpackage #:com.schobadoo.bencode
   (:nicknames #:bencode)
   (:use #:cl)
+  (:import-from #:flexi-streams #:flexi-stream)
   (:export #:encode
            #:decode
            #:get-dictionary

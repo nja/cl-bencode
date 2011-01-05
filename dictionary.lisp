@@ -38,14 +38,13 @@
                      (skip-key ())
                      (use-value (key) :report "Specify string to use as key"
                        (add-key-value key value))))))
-      (cond ((consp (car list))         ; alist
-             (dolist (cons list dictionary)
-               (destructuring-bind (key . value) cons
-                 (add-key-value key value))))
-            (t                          ; plist
-             (loop for (key value) on list by #'cddr
-                   do (add-key-value key value))
-             dictionary)))))
+      (if (consp (car list))            ; alist
+          (dolist (cons list dictionary)
+            (destructuring-bind (key . value) cons
+              (add-key-value key value)))
+          (loop for (key value) on list by #'cddr ; plist
+                do (add-key-value key value)))
+      dictionary)))
 
 (defun dictionary-hide-binary (dictionary)
   (let ((copy (make-dictionary nil)))
@@ -55,7 +54,8 @@
              dictionary)
     copy))
 
-(defparameter *binary-bdictionary-keys* (list "pieces"))
+(defparameter *binary-bdictionary-keys* (list "pieces" "peers")
+  "These dictionary keys will have their values decoded as binary strings.")
 
 (defun get-dictionary (key dictionary)
   (gethash key dictionary))
