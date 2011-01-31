@@ -1,7 +1,7 @@
 Description
 -----------
 
-cl-bencode is a Common Lisp bencode library. Bencode is the encoding
+cl-bencode is a Common Lisp bencode library.  Bencode is the encoding
 used by BitTorrent.
 
 Features
@@ -17,21 +17,39 @@ cl-bencode supports all four different types of bencode values.
 It's proven capable of roundtripping several torrents found in the
 wild.
 
+String encoding
+---------------
+
+The bencode specification does not deal with character
+encodings. cl-bencode uses flexi-streams' external-formats for
+character encoding.  The default is UTF-8.  See
+http://weitz.de/flexi-streams/#external-formats
+
+Binary strings
+--------------
+
+The parameter *binary-dictionary-keys* can be used to avoid decoding
+byte string values of dictionaries with a given key.  The default
+value will leave the "pieces" entry of a torrent "info" dictionary
+intact when decoding the meta-info dictionary.
+
 Example
 -------
 
-    CL-USER> (with-open-file (stream "/tmp/torrent" :element-type '(unsigned-byte 8))
-               (bencode:decode (flex:make-flexi-stream stream)))
-    #<HASH-TABLE :TEST EQUAL :COUNT 4 {BBA1EA9}>
-    CL-USER> (gethash "announce-list" *)
-    (("udp://tracker.openbittorrent.com:80/announce")
-     ("http://tracker.openbittorrent.com/announce"))
+    BENCODE> (with-open-file (stream "/tmp/torrent"
+                                     :element-type '(unsigned-byte 8))
+               (decode stream))
+    #<HASH-TABLE :TEST EQUAL :COUNT 4 {CB06069}>
+    BENCODE> (gethash "announce-list" *)
+    (("http://tracker.openbittorrent.com/announce")
+     ("udp://tracker.openbittorrent.com:80/announce"))
     T
-    CL-USER> (ironclad:digest-sequence :sha1 (bencode:encode ** :utf-8))
-    #(182 59 189 138 153 64 38 223 79 48 24 51 171 34 93 41 82 178 25 152)
-    CL-USER> (ironclad:digest-file :sha1 "/tmp/torrent")
-    #(182 59 189 138 153 64 38 223 79 48 24 51 171 34 93 41 82 178 25 152)
-    CL-USER> 
+    BENCODE> (type-of (gethash "pieces" (gethash "info" **)))
+    (SIMPLE-ARRAY (UNSIGNED-BYTE 8) (420660))
+    BENCODE> (equalp (ironclad:digest-sequence :sha1 (encode *** nil))
+                     (ironclad:digest-file :sha1 "/tmp/torrent"))
+    T
+    BENCODE> 
 
 Todo
 ----

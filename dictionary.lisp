@@ -48,10 +48,12 @@
 
 (defparameter *binary-dictionary-keys* '(("info" . "pieces"))
   "A list of strings and dotted lists of strings.  Strings denote
-dictionary keys whose values will not be decoded.  When decoding the
-value of a key matching the car of a dotted list, the cdr will be
-passed on as a new binding of *binary-dictionary-keys*.  Decoding a
-list will pass on the cdr of lists with a car of nil.")
+dictionary keys whose values will not be decoded, returning a byte
+vector rather than a string.  Dotted lists are used to specify nested
+dictionaries.  When decoding the value of a key matching the car of a
+dotted list, the cdr will be passed on as a new binding of
+*binary-dictionary-keys*.  Decoding a list will pass on the cdr of
+lists with a car of nil.")
 
 (defun get-dictionary (key dictionary)
   (gethash key dictionary))
