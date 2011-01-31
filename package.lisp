@@ -2,8 +2,7 @@
 
 (in-package #:cl-user)
 
-(defpackage #:com.schobadoo.bencode
-  (:nicknames #:bencode)
+(defpackage #:bencode
   (:use #:cl)
   (:import-from #:flexi-streams
                 #:flexi-stream

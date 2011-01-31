@@ -23,7 +23,7 @@
 ;;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;;; OTHER DEALINGS IN THE SOFTWARE.
 
-(in-package #:com.schobadoo.bencode)
+(in-package #:bencode)
 
 (define-condition nonstring-dictionary-key (error)
   ((key :initarg :key :reader key)))

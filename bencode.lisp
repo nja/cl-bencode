@@ -23,7 +23,7 @@
 ;;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;;; OTHER DEALINGS IN THE SOFTWARE.
 
-(in-package #:com.schobadoo.bencode)
+(in-package #:bencode)
 
 (define-condition unexpected-octet (error)
   ((expected-octet :initarg :expected-octet :reader expected-octet)
