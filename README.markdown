@@ -28,7 +28,7 @@ http://weitz.de/flexi-streams/#external-formats
 Binary strings
 --------------
 
-The parameter *binary-dictionary-keys* can be used to avoid decoding
+The parameter \*binary-dictionary-keys\* can be used to avoid decoding
 byte string values of dictionaries with a given key.  The default
 value will leave the "pieces" entry of a torrent "info" dictionary
 intact when decoding the meta-info dictionary.
