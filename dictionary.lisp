@@ -46,22 +46,23 @@
                 do (add-key-value key value)))
       dictionary)))
 
-(defun dictionary-hide-binary (dictionary)
-  (let ((copy (make-dictionary nil)))
-    (maphash (lambda (key value)
-               (unless (binary-dictionary-key-p key)
-                 (setf (gethash key copy) value)))
-             dictionary)
-    copy))
-
-(defparameter *binary-bdictionary-keys* (list "pieces" "peers")
-  "These dictionary keys will have their values decoded as binary strings.")
+(defparameter *binary-dictionary-keys* '(("info" . "pieces"))
+  "A list of strings and dotted lists of strings.  Strings denote
+dictionary keys whose values will not be decoded.  When decoding the
+value of a key matching the car of a dotted list, the cdr will be
+passed on as a new binding of *binary-dictionary-keys*.  Decoding a
+list will pass on the cdr of lists with a car of nil.")
 
 (defun get-dictionary (key dictionary)
   (gethash key dictionary))
 
 (defun binary-dictionary-key-p (key)
-  (find key *binary-bdictionary-keys* :test #'equal))
+  (find key *binary-dictionary-keys* :test 'equal))
+
+(defun binary-sub-keys (key)
+  (mapcar #'cdr (remove-if-not (lambda (x) (and (consp x)
+                                                (equal key (car x))))
+                               *binary-dictionary-keys*)))
 
 (defun dictionary->alist (dictionary)
   "Returns an alist representation of the dictionary."
@@ -73,5 +74,5 @@
                      (skip-key ())
                      (use-value (key) :report "Specify string to use as key"
                        (add-key-value key value))))))
-      (maphash #'add-key-value dictionary))
-    (sort alist #'string< :key #'car)))
+      (maphash #'add-key-value dictionary)
+      (sort alist #'string< :key #'car))))
