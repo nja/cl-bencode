@@ -50,11 +50,11 @@
 is nil, use an in-memory stream and return the resulting sequence."))
 
 (defmethod encode (object (stream stream) &key (external-format +utf-8+))
-  (encode object (flex:make-flexi-stream stream :external-format external-format)))
+  (encode object (make-flexi-stream stream :external-format external-format)))
 
 (defmethod encode (object (stream (eql nil)) &key (external-format +utf-8+))
-  (flex:with-output-to-sequence (stream)
-    (encode object (flex:make-flexi-stream stream :external-format external-format))))
+  (with-output-to-sequence (stream)
+    (encode object (make-flexi-stream stream :external-format external-format))))
 
 (defmethod encode ((list list) (stream flexi-stream) &key &allow-other-keys)
   (write-byte (char-code #\l) stream)
@@ -71,7 +71,7 @@ is nil, use an in-memory stream and return the resulting sequence."))
   (write-byte (char-code #\e) stream))
 
 (defmethod encode ((string string) (stream flexi-stream) &key &allow-other-keys)
-  (let ((octets (string-to-octets string (flex:flexi-stream-external-format stream))))
+  (let ((octets (string-to-octets string (flexi-stream-external-format stream))))
     (write-sequence (string-to-octets (format nil "~a:" (length octets))) stream)
     (write-sequence octets stream)))
 
@@ -90,14 +90,14 @@ parameter is used to create a flexi-stream for decoding.  The default
 is :utf-8."))
 
 (defmethod decode ((stream stream) &key (external-format +utf-8+))
-  (decode (flex:make-flexi-stream stream :external-format external-format)))
+  (decode (make-flexi-stream stream :external-format external-format)))
 
 (defmethod decode ((sequence sequence) &key (external-format +utf-8+))
-  (flex:with-input-from-sequence (stream sequence)
-    (decode (flex:make-flexi-stream stream :external-format external-format))))
+  (with-input-from-sequence (stream sequence)
+    (decode (make-flexi-stream stream :external-format external-format))))
 
 (defmethod decode ((stream flexi-stream) &key &allow-other-keys)
-  (let ((c (code-char (flex:peek-byte stream))))
+  (let ((c (code-char (peek-byte stream))))
     (ccase c
       (#\i (decode-integer stream))
       ((#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9)
@@ -115,7 +115,7 @@ is :utf-8."))
     (- (char-int char) (char-int #\0))))
 
 (defun maybe-read-char (stream char)
-  (if (eq (flex:peek-byte stream) (char-code char))
+  (if (eq (peek-byte stream) (char-code char))
       (code-char (read-byte stream))
       nil))
 
@@ -134,7 +134,7 @@ is :utf-8."))
 
 (defun read-integers (stream)
   (with-output-to-string (string)
-    (loop for octet = (flex:peek-byte stream)
+    (loop for octet = (peek-byte stream)
           while (char-integer-p (code-char octet))
           do (write-char (code-char (read-byte stream)) string))))
 
@@ -146,7 +146,7 @@ is :utf-8."))
     (loop    ; Loop to allow restarting with several external formats 
       (restart-case
           (return ; Return to end loop when decoded without raising a condition
-            (octets-to-string octets (flex:flexi-stream-external-format stream)))
+            (octets-to-string octets (flexi-stream-external-format stream)))
         (use-binary ()
           :report "Use undecoded binary vector"
           (return octets))
@@ -155,7 +155,7 @@ is :utf-8."))
           :interactive (lambda ()
                          (format t "Enter a flexi-stream external format: ")
                          (multiple-value-list (eval (read))))
-          (setf (flex:flexi-stream-external-format stream) external-format))))))
+          (setf (flexi-stream-external-format stream) external-format))))))
 
 (defun decode-list (stream)
   (must-read-char stream #\l)
