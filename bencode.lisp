@@ -25,8 +25,6 @@
 
 (in-package #:com.schobadoo.bencode)
 
-(defparameter +utf-8+ (flex:make-external-format :utf-8))
-
 (define-condition unexpected-octet (error)
   ((expected-octet :initarg :expected-octet :reader expected-octet)
    (actual-octet :initarg :actual-octet :reader actual-octet)))
@@ -39,7 +37,7 @@
             (error "Expected 0x~x got 0x~x" (char-code char) byte)))
     (continue () t)))
 
-(defun string-to-octets (string &optional (external-format +utf-8+))
+(defun string-to-octets (string &optional (external-format :utf-8))
   (flex:string-to-octets string :external-format external-format))
 
 (defun octets-to-string (octets external-format)
@@ -47,12 +45,14 @@
 
 (defgeneric encode (object stream &key external-format)
   (:documentation "Encode object and write it to stream or, if stream
-is nil, use an in-memory stream and return the resulting sequence."))
+is nil, use an in-memory stream and return the resulting sequence.
+The external-format is used when encoding strings.  UTF-8 is the
+default."))
 
-(defmethod encode (object (stream stream) &key (external-format +utf-8+))
+(defmethod encode (object (stream stream) &key (external-format :utf-8))
   (encode object (make-flexi-stream stream :external-format external-format)))
 
-(defmethod encode (object (stream (eql nil)) &key (external-format +utf-8+))
+(defmethod encode (object (stream (eql nil)) &key (external-format :utf-8))
   (with-output-to-sequence (stream)
     (encode object (make-flexi-stream stream :external-format external-format))))
 
@@ -87,12 +87,12 @@ is nil, use an in-memory stream and return the resulting sequence."))
 If stream is a flexi-stream, its external-format will be used when
 decoding strings.  Otherwise, the value of the external-format
 parameter is used to create a flexi-stream for decoding.  The default
-is :utf-8."))
+is UTF-8."))
 
-(defmethod decode ((stream stream) &key (external-format +utf-8+))
+(defmethod decode ((stream stream) &key (external-format :utf-8))
   (decode (make-flexi-stream stream :external-format external-format)))
 
-(defmethod decode ((sequence sequence) &key (external-format +utf-8+))
+(defmethod decode ((sequence sequence) &key (external-format :utf-8))
   (with-input-from-sequence (stream sequence)
     (decode (make-flexi-stream stream :external-format external-format))))
 
