@@ -5,7 +5,7 @@
 
 (defsystem #:bencode
   :description "Bencode"
-  :version "0.1x"
+  :version "0.2"
   :author "Johan Andersson <johan@nforced.com>"
   :license "MIT"
   :components ((:file "package")
