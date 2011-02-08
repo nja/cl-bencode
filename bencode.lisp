@@ -37,11 +37,15 @@
             (error "Expected 0x~x got 0x~x" (char-code char) byte)))
     (continue () t)))
 
-(defun string-to-octets (string &optional (external-format :utf-8))
-  (flex:string-to-octets string :external-format external-format))
+(let ((ascii (flex:make-external-format :ascii)))
+  (defun string-header (length)
+    (string-to-octets (format nil "~a:" length) :external-format ascii))
 
-(defun octets-to-string (octets external-format)
-  (flex:octets-to-string octets :external-format external-format))
+  (defun render-integer (integer)
+    (string-to-octets (format nil "i~ae" integer) :external-format ascii)))
+
+(defun string-length (string external-format)
+  (octet-length string :external-format external-format))
 
 (defgeneric encode (object stream &key external-format)
   (:documentation "Encode object and write it to stream or, if stream
@@ -71,15 +75,16 @@ default."))
   (write-byte (char-code #\e) stream))
 
 (defmethod encode ((string string) (stream flexi-stream) &key &allow-other-keys)
-  (let ((octets (string-to-octets string (flexi-stream-external-format stream))))
-    (write-sequence (string-to-octets (format nil "~a:" (length octets))) stream)
-    (write-sequence octets stream)))
+  (with-accessors ((external-format flexi-stream-external-format))
+      stream
+    (write-sequence (string-header (string-length string external-format)) stream)
+    (write-sequence string stream)))
 
 (defmethod encode ((integer integer) (stream flexi-stream) &key &allow-other-keys)
-  (write-sequence (string-to-octets (format nil "i~ae" integer)) stream))
+  (write-sequence (render-integer integer) stream))
 
 (defmethod encode ((sequence array) (stream flexi-stream) &key &allow-other-keys)
-  (write-sequence (string-to-octets (format nil "~a:" (length sequence))) stream)
+  (write-sequence (string-header (length sequence)) stream)
   (write-sequence sequence stream))
 
 (defgeneric decode (stream-or-sequence &key external-format)
@@ -139,32 +144,31 @@ is UTF-8."))
           do (write-char (code-char (read-byte stream)) string))))
 
 (defun decode-string (stream)
-  (let* ((length (parse-integer (read-integers stream)))
-         (octets (make-array length :element-type '(unsigned-byte 8))))
-    (must-read-char stream #\:)
-    (read-sequence octets stream)
-    (loop    ; Loop to allow restarting with several external formats 
-      (restart-case
-          (return ; Return to end loop when decoded without raising a condition
-            (octets-to-string octets (flexi-stream-external-format stream)))
-        (use-binary ()
-          :report "Use undecoded binary vector"
-          (return octets))
-        (set-external-format (external-format)
-          :report "Set external format"
-          :interactive (lambda ()
-                         (format t "Enter a flexi-stream external format: ")
-                         (multiple-value-list (eval (read))))
-          (setf (flexi-stream-external-format stream) external-format))))))
+  (with-accessors ((external-format flexi-stream-external-format))
+      stream
+    (let* ((length (parse-integer (read-integers stream)))
+	   (octets (make-array length :element-type '(unsigned-byte 8))))
+      (must-read-char stream #\:)
+      (read-sequence octets stream)
+      (loop  ; Loop to allow restarting with several external formats 
+	(restart-case
+	    (return ; Return to end loop when decoded without raising a condition
+	      (octets-to-string octets :external-format external-format))
+	  (use-binary ()
+	    :report "Use undecoded binary vector"
+	    (return octets))
+	  (set-external-format (new-external-format)
+	    :report "Set external format"
+	    :interactive (lambda ()
+			   (format t "Enter a flexi-stream external format: ")
+			   (multiple-value-list (eval (read))))
+	    (setf external-format new-external-format)))))))
 
 (defun decode-list (stream)
   (must-read-char stream #\l)
-  (loop with list
-        until (maybe-read-char stream #\e)
-        do (push (let ((*binary-dictionary-keys* (binary-sub-keys nil)))
-                   (decode stream))
-                 list)
-        finally (return (nreverse list))))
+  (loop until (maybe-read-char stream #\e)
+        collect (let ((*binary-dictionary-keys* (binary-sub-keys nil)))
+		  (decode stream))))
 
 (defun decode-binary-string (stream)
   (let* ((length (parse-integer (read-integers stream)))
