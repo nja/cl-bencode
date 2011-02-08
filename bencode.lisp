@@ -32,7 +32,7 @@
 (defun must-read-char (stream char)
   (restart-case
       (let ((byte (read-byte stream)))
-        (if (eq byte (char-code char))
+        (if (eql byte (char-code char))
             t
             (error "Expected 0x~x got 0x~x" (char-code char) byte)))
     (continue () t)))
@@ -115,7 +115,7 @@ is UTF-8."))
     (- (char-int char) (char-int #\0))))
 
 (defun maybe-read-char (stream char)
-  (if (eq (peek-byte stream) (char-code char))
+  (if (eql (peek-byte stream) (char-code char))
       (code-char (read-byte stream))
       nil))
 
