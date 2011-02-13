@@ -10,5 +10,6 @@
   :license "MIT"
   :components ((:file "package")
                (:file "dictionary" :depends-on ("package"))
-               (:file "bencode" :depends-on ("package" "dictionary")))
+               (:file "encode" :depends-on ("package" "dictionary"))
+	       (:file "decode" :depends-on ("package" "dictionary")))
   :depends-on (#:flexi-streams))

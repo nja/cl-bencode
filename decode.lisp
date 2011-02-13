@@ -25,68 +25,6 @@
 
 (in-package #:bencode)
 
-(define-condition unexpected-octet (error)
-  ((expected-octet :initarg :expected-octet :reader expected-octet)
-   (actual-octet :initarg :actual-octet :reader actual-octet)))
-
-(defun must-read-char (stream char)
-  (restart-case
-      (let ((byte (read-byte stream)))
-        (if (eql byte (char-code char))
-            t
-            (error "Expected 0x~x got 0x~x" (char-code char) byte)))
-    (continue () t)))
-
-(let ((ascii (flex:make-external-format :ascii)))
-  (defun string-header (length)
-    (string-to-octets (format nil "~a:" length) :external-format ascii))
-
-  (defun render-integer (integer)
-    (string-to-octets (format nil "i~ae" integer) :external-format ascii)))
-
-(defun string-length (string external-format)
-  (octet-length string :external-format external-format))
-
-(defgeneric encode (object stream &key external-format)
-  (:documentation "Encode object and write it to stream or, if stream
-is nil, use an in-memory stream and return the resulting sequence.
-The external-format is used when encoding strings.  UTF-8 is the
-default."))
-
-(defmethod encode (object (stream stream) &key (external-format :utf-8))
-  (encode object (make-flexi-stream stream :external-format external-format)))
-
-(defmethod encode (object (stream (eql nil)) &key (external-format :utf-8))
-  (with-output-to-sequence (stream)
-    (encode object (make-flexi-stream stream :external-format external-format))))
-
-(defmethod encode ((list list) (stream flexi-stream) &key &allow-other-keys)
-  (write-byte (char-code #\l) stream)
-  (dolist (x list)
-    (encode x stream))
-  (write-byte (char-code #\e) stream))
-
-(defmethod encode ((dictionary hash-table) (stream flexi-stream) &key &allow-other-keys)
-  (write-byte (char-code #\d) stream)
-  (dolist (x (dictionary->alist dictionary))
-    (destructuring-bind (k . v) x
-      (encode k stream)
-      (encode v stream)))
-  (write-byte (char-code #\e) stream))
-
-(defmethod encode ((string string) (stream flexi-stream) &key &allow-other-keys)
-  (with-accessors ((external-format flexi-stream-external-format))
-      stream
-    (write-sequence (string-header (string-length string external-format)) stream)
-    (write-sequence string stream)))
-
-(defmethod encode ((integer integer) (stream flexi-stream) &key &allow-other-keys)
-  (write-sequence (render-integer integer) stream))
-
-(defmethod encode ((sequence array) (stream flexi-stream) &key &allow-other-keys)
-  (write-sequence (string-header (length sequence)) stream)
-  (write-sequence sequence stream))
-
 (defgeneric decode (stream-or-sequence &key external-format)
   (:documentation "Decode a bencode object from a stream or sequence.
 If stream is a flexi-stream, its external-format will be used when
@@ -110,14 +48,22 @@ is UTF-8."))
       (#\l (decode-list stream))
       (#\d (decode-dictionary stream)))))
 
+(define-condition unexpected-octet (error)
+  ((expected-octet :initarg :expected-octet :reader expected-octet)
+   (actual-octet :initarg :actual-octet :reader actual-octet)))
+
+(defun must-read-char (stream char)
+  (restart-case
+      (let ((byte (read-byte stream)))
+        (if (eql byte (char-code char))
+            t
+            (error "Expected 0x~x got 0x~x" (char-code char) byte)))
+    (continue () t)))
+
 (defun char-integer-p (char)
   (case char
     ((#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9) t)
     (t nil)))
-
-(defun char->integer (char)
-  (when (char-integer-p char)
-    (- (char-int char) (char-int #\0))))
 
 (defun maybe-read-char (stream char)
   (if (eql (peek-byte stream) (char-code char))
@@ -142,6 +88,10 @@ is UTF-8."))
     (loop for octet = (peek-byte stream)
           while (char-integer-p (code-char octet))
           do (write-char (code-char (read-byte stream)) string))))
+
+(defun read-external-format ()
+  (format t "Enter a flexi-stream external format: ")
+  (multiple-value-list (eval (read))))
 
 (defun decode-string (stream)
   (with-accessors ((external-format flexi-stream-external-format))
