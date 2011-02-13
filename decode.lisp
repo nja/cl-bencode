@@ -25,6 +25,10 @@
 
 (in-package #:bencode)
 
+(defmacro restart-case-loop (form &body clauses)
+  `(loop (restart-case (return ,form)
+	   ,@clauses)))
+
 (defgeneric decode (stream-or-sequence &key external-format)
   (:documentation "Decode a bencode object from a stream or sequence.
 If stream is a flexi-stream, its external-format will be used when
@@ -36,8 +40,12 @@ is UTF-8."))
   (decode (make-flexi-stream stream :external-format external-format)))
 
 (defmethod decode ((sequence sequence) &key (external-format :utf-8))
-  (with-input-from-sequence (stream sequence)
-    (decode (make-flexi-stream stream :external-format external-format))))
+  (restart-case-loop (with-input-from-sequence (stream sequence)
+		       (decode (make-flexi-stream stream :external-format external-format)))
+    (retry-sequence (new-external-format)
+		    :report "Set external format and retry decoding the sequence from the beginning"
+		    :interactive read-external-format
+		    (setf external-format new-external-format))))
 
 (defmethod decode ((stream flexi-stream) &key &allow-other-keys)
   (let ((c (code-char (peek-byte stream))))
@@ -100,19 +108,16 @@ is UTF-8."))
 	   (octets (make-array length :element-type '(unsigned-byte 8))))
       (must-read-char stream #\:)
       (read-sequence octets stream)
-      (loop  ; Loop to allow restarting with several external formats 
-	(restart-case
-	    (return ; Return to end loop when decoded without raising a condition
-	      (octets-to-string octets :external-format external-format))
-	  (use-binary ()
-	    :report "Use undecoded binary vector"
-	    (return octets))
-	  (set-external-format (new-external-format)
-	    :report "Set external format"
-	    :interactive (lambda ()
-			   (format t "Enter a flexi-stream external format: ")
-			   (multiple-value-list (eval (read))))
-	    (setf external-format new-external-format)))))))
+      (restart-case-loop (octets-to-string octets :external-format external-format)
+	(use-binary ()
+		    :report "Use undecoded binary vector"
+		    (return octets))
+	(retry-string (new-external-format)
+		      :report "Set external format and continue decoding from the start of the string"
+		      :interactive (lambda ()
+				     (format t "Enter a flexi-stream external format: ")
+				     (multiple-value-list (eval (read))))
+		      (setf external-format new-external-format))))))
 
 (defun decode-list (stream)
   (must-read-char stream #\l)
