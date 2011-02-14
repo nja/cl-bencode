@@ -49,23 +49,29 @@ is UTF-8."))
 
 (defmethod decode ((stream flexi-stream) &key &allow-other-keys)
   (let ((c (code-char (peek-byte stream))))
-    (ccase c
+    (case c
       (#\i (decode-integer stream))
       ((#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9)
-         (decode-string stream))
+	 (decode-string stream))
       (#\l (decode-list stream))
-      (#\d (decode-dictionary stream)))))
+      (#\d (decode-dictionary stream))
+      (t (error 'invalid-value-type :octet c)))))
 
 (define-condition unexpected-octet (error)
   ((expected-octet :initarg :expected-octet :reader expected-octet)
    (actual-octet :initarg :actual-octet :reader actual-octet)))
+
+(define-condition invalid-value-type (error)
+  ((octet :initarg :octet :reader octet)))
 
 (defun must-read-char (stream char)
   (restart-case
       (let ((byte (read-byte stream)))
         (if (eql byte (char-code char))
             t
-            (error "Expected 0x~x got 0x~x" (char-code char) byte)))
+            (error 'unexpected-octet
+		   :expected-octet (char-code char)
+		   :actual-octet byte)))
     (continue () t)))
 
 (defun char-integer-p (char)
@@ -114,9 +120,7 @@ is UTF-8."))
 		    (return octets))
 	(retry-string (new-external-format)
 		      :report "Set external format and continue decoding from the start of the string"
-		      :interactive (lambda ()
-				     (format t "Enter a flexi-stream external format: ")
-				     (multiple-value-list (eval (read))))
+		      :interactive read-external-format
 		      (setf external-format new-external-format))))))
 
 (defun decode-list (stream)

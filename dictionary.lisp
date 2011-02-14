@@ -36,7 +36,11 @@
                    (setf (gethash key dictionary) value)
                    (restart-case (error 'nonstring-dictionary-key :key key)
                      (skip-key ())
-                     (use-value (key) :report "Specify string to use as key"
+                     (use-value (key)
+		       :report "Specify string to use as key"
+		       :interactive (lambda ()
+		       		      (format t "Enter a key string: ")
+		       		      (list (read)))
                        (add-key-value key value))))))
       (if (consp (car list))            ; alist
           (dolist (cons list dictionary)
