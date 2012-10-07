@@ -36,24 +36,27 @@ intact when decoding the meta-info dictionary.
 Example
 -------
 
-    BENCODE> (with-open-file (stream "/tmp/torrent"
+    CL-USER> (ql:quickload "bencode")
+    ...
+    ("bencode")
+    CL-USER> (with-open-file (stream "/tmp/torrent" 
                                      :element-type '(unsigned-byte 8))
-               (decode stream))
-    #<HASH-TABLE :TEST EQUAL :COUNT 4 {CB06069}>
-    BENCODE> (gethash "announce-list" *)
-    (("http://tracker.openbittorrent.com/announce")
-     ("udp://tracker.openbittorrent.com:80/announce"))
+               (bencode:decode stream))
+    #<HASH-TABLE :TEST EQUAL :COUNT 4 {1005E0E3D3}>
+    CL-USER> (gethash "announce" *)
+    "http://bttracker.debian.org:6969/announce"
     T
-    BENCODE> (type-of (gethash "pieces" (gethash "info" **)))
-    (SIMPLE-ARRAY (UNSIGNED-BYTE 8) (420660))
-    BENCODE> (equalp (ironclad:digest-sequence :sha1 (encode *** nil))
+    CL-USER> (type-of (gethash "pieces" (gethash "info" **)))
+    (SIMPLE-ARRAY (UNSIGNED-BYTE 8) (88860))
+    CL-USER> (equalp (ironclad:digest-sequence :sha1 (bencode:encode *** nil))
                      (ironclad:digest-file :sha1 "/tmp/torrent"))
     T
-    BENCODE> 
+    CL-USER> (asdf:test-system "bencode")
+    ......................................
+    T
+    CL-USER> 
 
 Todo
 ----
 
-* Tests
 * Documentation
-* Error handling
