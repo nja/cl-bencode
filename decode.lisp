@@ -85,8 +85,8 @@ decoding.  The default is UTF-8."))
     (t nil)))
 
 (defun maybe-read-char (stream char)
-  (if (eql (peek-byte stream) (char-code char))
-      (code-char (read-byte stream))
+  (if (eql (peek-byte stream nil t) (char-code char))
+      (code-char (read-byte stream :eof-error-p t))
       nil))
 
 (defun decode-integer (stream)
