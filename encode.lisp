@@ -32,7 +32,9 @@ The external-format is used when encoding strings.  UTF-8 is the
 default."))
 
 (defmethod encode (object (stream stream) &key (external-format :utf-8))
-  (encode object (make-flexi-stream stream :external-format external-format)))
+  (if (typep stream 'flexi-stream)
+      (error "No applicable encode method for ~S" object)
+      (encode object (make-flexi-stream stream :external-format external-format))))
 
 (defmethod encode (object (stream (eql nil)) &key (external-format :utf-8))
   (with-output-to-sequence (stream)
