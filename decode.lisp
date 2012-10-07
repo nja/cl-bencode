@@ -114,21 +114,28 @@ decoding.  The default is UTF-8."))
   (format t "Enter a flexi-stream external format: ")
   (multiple-value-list (eval (read))))
 
+(defun must-read-octets (stream length)
+  (let* ((array (make-array length :element-type '(unsigned-byte 8)))
+	 (read (read-sequence array stream)))
+    (if (= read length)
+	array
+	(restart-case (error "EOF before sting end")
+	  (continue () (adjust-array array read))))))
+
 (defun decode-string (stream)
   (with-accessors ((external-format flexi-stream-external-format))
       stream
-    (let* ((length (parse-integer (read-integers stream)))
-	   (octets (make-array length :element-type '(unsigned-byte 8))))
+    (let ((length (parse-integer (read-integers stream))))
       (must-read-char stream #\:)
-      (read-sequence octets stream)
-      (restart-case-loop (octets-to-string octets :external-format external-format)
-	(use-binary ()
-		    :report "Use undecoded binary vector"
-		    (return octets))
-	(retry-string (new-external-format)
-		      :report "Set external format and continue decoding from the start of the string"
-		      :interactive read-external-format
-		      (setf external-format new-external-format))))))
+      (let ((octets (must-read-octets stream length)))
+	(restart-case-loop (octets-to-string octets :external-format external-format)
+	  (use-binary ()
+		      :report "Use undecoded binary vector"
+		      (return octets))
+	  (retry-string (new-external-format)
+			:report "Set external format and continue decoding from the start of the string"
+			:interactive read-external-format
+			(setf external-format new-external-format)))))))
 
 (defun decode-list (stream)
   (must-read-char stream #\l)
@@ -137,11 +144,9 @@ decoding.  The default is UTF-8."))
 		  (decode stream))))
 
 (defun decode-binary-string (stream)
-  (let* ((length (parse-integer (read-integers stream)))
-         (octets (make-array length :element-type '(unsigned-byte 8))))
+  (let ((length (parse-integer (read-integers stream))))
     (must-read-char stream #\:)
-    (read-sequence octets stream)
-    octets))
+    (must-read-octets stream length)))
 
 (defun decode-dictionary (stream)
   (must-read-char stream #\d)
