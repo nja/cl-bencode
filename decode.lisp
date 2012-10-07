@@ -1,6 +1,6 @@
 ;;; -*- Mode: LISP -*-
 ;;;
-;;; Copyright (c) 2009-2011 Johan Andersson
+;;; Copyright (c) 2009-2012 Johan Andersson
 ;;;
 ;;; Permission is hereby granted, free of charge, to any person
 ;;; obtaining a copy of this software and associated documentation
@@ -29,15 +29,20 @@
   `(loop (restart-case (return ,form)
 	   ,@clauses)))
 
-(defgeneric decode (stream-or-sequence &key external-format)
+(defgeneric decode (input &key external-format)
   (:documentation "Decode a bencode object from a stream or sequence.
-If stream is a flexi-stream, its external-format will be used when
-decoding strings.  Otherwise, the value of the external-format
-parameter is used to create a flexi-stream for decoding.  The default
-is UTF-8."))
+If input is a flexi-stream, its external-format will be used when
+decoding strings.  If input is a string, all characters must have
+char-codes that fit in an (unsigned-byte 8). Otherwise, the value of
+the external-format parameter is used to create a flexi-stream for
+decoding.  The default is UTF-8."))
 
 (defmethod decode ((stream stream) &key (external-format :utf-8))
   (decode (make-flexi-stream stream :external-format external-format)))
+
+(defmethod decode ((string string) &key (external-format :utf-8))
+  (decode (map '(vector (unsigned-byte 8))
+	       #'char-code string) :external-format external-format))
 
 (defmethod decode ((sequence sequence) &key (external-format :utf-8))
   (restart-case-loop (with-input-from-sequence (stream sequence)
