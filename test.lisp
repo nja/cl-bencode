@@ -49,7 +49,7 @@
 				     (length (encode *non-ascii-string* nil
 						     :external-format enc)))
 				 *encodings*)))
-    (is (apply #'<= encoded-lengths))))
+    (is (apply #'< encoded-lengths))))
 
 (deftest decode-string-specializer-test ()
   (is (string= "foo" (decode "3:foo"))))
