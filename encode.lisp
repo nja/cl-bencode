@@ -1,6 +1,6 @@
 ;;; -*- Mode: LISP -*-
 ;;;
-;;; Copyright (c) 2009-2011 Johan Andersson
+;;; Copyright (c) 2009-2012 Johan Andersson
 ;;;
 ;;; Permission is hereby granted, free of charge, to any person
 ;;; obtaining a copy of this software and associated documentation
@@ -68,9 +68,10 @@ default."))
   (write-sequence (string-header (length sequence)) stream)
   (write-sequence sequence stream))
 
-(let ((ascii (flex:make-external-format :ascii)))
-  (defun string-header (length)
-    (string-to-octets (format nil "~a:" length) :external-format ascii))
+(defparameter *ascii* (flex:make-external-format :ascii))
 
-  (defun render-integer (integer)
-    (string-to-octets (format nil "i~ae" integer) :external-format ascii)))
+(defun string-header (length)
+  (string-to-octets (format nil "~a:" length) :external-format *ascii*))
+
+(defun render-integer (integer)
+  (string-to-octets (format nil "i~ae" integer) :external-format *ascii*))
