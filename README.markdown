@@ -37,7 +37,7 @@ Example
 -------
 
     CL-USER> (ql:quickload "bencode")
-    ...
+    ; ...
     ("bencode")
     CL-USER> (with-open-file (stream "/tmp/torrent" 
                                      :element-type '(unsigned-byte 8))
