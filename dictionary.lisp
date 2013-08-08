@@ -50,25 +50,21 @@
                 do (add-key-value key value)))
       dictionary)))
 
-(defparameter *binary-dictionary-keys* '(("info" . "pieces"))
-  "A list of strings and dotted lists of strings.  Strings denote
-dictionary keys whose values will not be decoded, returning a byte
-vector rather than a string.  Dotted lists are used to specify nested
-dictionaries.  When decoding the value of a key matching the car of a
-dotted list, the cdr will be passed on as a new binding of
-*binary-dictionary-keys*.  Decoding a list will pass on the cdr of
-lists with a car of nil.")
+(defparameter *binary-key-p* #'(lambda (x) (equal x '("pieces" "info")))
+  "When decoding dictionary values, this function is passed a list,
+  where the first element is the key of the value. If the dictionary
+  was in turn a dictionary value, that key is the second element of
+  the list, and so on. Should a dictionary be a value in a bencoded
+  list, the corresponding element in the will be the symbol :list.
+  When the function return a true value, the dictionary value will be
+  binary. Otherwise it will be decoded as a string.")
 
 (defun get-dictionary (key dictionary)
   (gethash key dictionary))
 
 (defun binary-dictionary-key-p (key)
-  (find key *binary-dictionary-keys* :test 'equal))
-
-(defun binary-sub-keys (key)
-  (mapcar #'cdr (remove-if-not (lambda (x) (and (consp x)
-                                                (equal key (car x))))
-                               *binary-dictionary-keys*)))
+  (when (functionp *binary-key-p*)
+    (funcall *binary-key-p* key)))
 
 (defun dictionary->alist (dictionary)
   "Returns an alist representation of the dictionary."

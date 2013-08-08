@@ -16,4 +16,4 @@
                 #:peek-byte)
   (:export #:encode
            #:decode
-           #:*binary-dictionary-keys*))
+           #:*binary-key-p*))
