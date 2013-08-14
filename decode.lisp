@@ -79,11 +79,6 @@ decoding.  The default is UTF-8."))
 		   :actual-octet byte)))
     (continue () t)))
 
-(defun char-integer-p (char)
-  (case char
-    ((#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9) t)
-    (t nil)))
-
 (defun maybe-read-char (stream char)
   (if (eql (peek-byte stream nil t) (char-code char))
       (code-char (read-byte stream :eof-error-p t))
@@ -107,7 +102,7 @@ decoding.  The default is UTF-8."))
 (defun read-integers (stream)
   (with-output-to-string (string)
     (loop for octet = (peek-byte stream)
-          while (char-integer-p (code-char octet))
+          while (digit-char-p (code-char octet))
           do (write-char (code-char (read-byte stream)) string))))
 
 (defun read-external-format ()
