@@ -28,10 +28,18 @@ http://weitz.de/flexi-streams/#external-formats
 Binary strings
 --------------
 
-The parameter \*binary-dictionary-keys\* can be used to avoid decoding
-byte string values of dictionaries with a given key.  The default
-value will leave the "pieces" entry of a torrent "info" dictionary
-intact when decoding the meta-info dictionary.
+The parameter \*binary-key-p\* may hold a function. When decoding
+dictionary values, this function is passed a list, where the first
+element is the key of the value. If the dictionary was in turn a
+dictionary value, that key is the second element of the list, and so
+on. Should a dictionary be a value in a bencoded list, the
+corresponding element in the list will be the symbol :list.  When the
+function return a true value, the dictionary value will be
+binary. Otherwise it will be decoded as a string.
+
+The default function in \*binary-key-p\* returns true for the "pieces"
+value in the "info" dictionary. All other values are decoded as
+strings.
 
 Example
 -------

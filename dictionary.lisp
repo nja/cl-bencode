@@ -52,12 +52,16 @@
 
 (defparameter *binary-key-p* #'(lambda (x) (equal x '("pieces" "info")))
   "When decoding dictionary values, this function is passed a list,
-  where the first element is the key of the value. If the dictionary
-  was in turn a dictionary value, that key is the second element of
-  the list, and so on. Should a dictionary be a value in a bencoded
-  list, the corresponding element in the will be the symbol :list.
-  When the function return a true value, the dictionary value will be
-  binary. Otherwise it will be decoded as a string.")
+where the first element is the key of the value. If the dictionary was
+in turn a dictionary value, that key is the second element of the
+list, and so on. Should a dictionary be a value in a bencoded list,
+the corresponding element in the list will be the symbol :list.  When
+the function return a true value, the dictionary value will be
+binary. Otherwise it will be decoded as a string.
+
+The default function in \*binary-key-p\* returns true for the
+\"pieces\" value in the \"info\" dictionary. All other values are
+decoded as strings.")
 
 (defun get-dictionary (key dictionary)
   (gethash key dictionary))
