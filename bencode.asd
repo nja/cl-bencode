@@ -16,6 +16,9 @@
   :in-order-to ((test-op (test-op #:bencode-test))))
 
 (defsystem #:bencode-test
+  :description "Test system of Bencode"
+  :author "Johan Andersson <nilsjohanandersson@gmail.com>"
+  :license "MIT"
   :serial t
   :depends-on (#:bencode #:hu.dwim.stefil)
   :components ((:file "test")))
