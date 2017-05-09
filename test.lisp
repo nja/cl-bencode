@@ -14,23 +14,68 @@
   (generator (map (lambda (x) (coerce x 'string))
                   (list (character)))))
 
+(defun make-dict (keys values)
+  (let ((dict (make-hash-table :test 'equal)))
+    (loop for k in keys
+          for v in values
+          do (setf (gethash k dict) v))
+    dict))
+
 (def-generator input ()
   (generator (or (integer)
                  (any-string)
                  (list (input))
-                 (map (lambda (keys values)
-                        (let ((dict (make-hash-table :test 'equal)))
-                          (loop for k in keys
-                                for v in values
-                                do (setf (gethash k dict) v))
-                          dict))
+                 (map #'make-dict
                       (list (any-string))
                       (list (input))))))
 
+(defun roundtrip-p (x)
+  (equalp x (decode (encode x nil))))
+
 (deftest roundtrip-test ()
-  (is (check-it (generator (input))
-                (lambda (x)
-                  (equalp x (decode (encode x nil)))))))
+  (let ((*binary-key-p* nil))
+    (is (check-it (generator (input))
+                  #'roundtrip-p))))
+
+(def-generator binary-string ()
+  (generator (map (lambda (x)
+                    (make-array (length x)
+                                :initial-contents x
+                                :element-type '(unsigned-byte 8)))
+                  (list (integer 0 255)))))
+
+(defvar *binary-mark* "binary")
+
+(defun binary-key-p (x)
+  (let ((str (first x)))
+    (search *binary-mark* str
+            :start2 0
+            :end2 (min (length *binary-mark*) (length str)))))
+
+(def-generator binary-key ()
+  (generator (map (lambda (x) (concatenate 'string "binary" x))
+                  (string))))
+
+(def-generator string-key ()
+  (generator (guard (lambda (x)
+                      (not (binary-key-p x)))
+                    (string))))
+
+(def-generator mixed-input ()
+  (generator (or (integer)
+                 (any-string)
+                 (list (mixed-input))
+                 (map #'make-dict
+                      (list (any-string))
+                      (list (mixed-input)))
+                 (map #'make-dict
+                      (list (binary-key))
+                      (list (binary-string))))))
+
+(deftest binary-roundtrip-test ()
+  (let ((*binary-key-p* #'binary-key-p))
+    (is (check-it (generator (mixed-input))
+                  #'roundtrip-p))))
 
 ;;; Integers
 
