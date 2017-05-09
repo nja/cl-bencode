@@ -25,6 +25,8 @@
 
 (in-package #:bencode)
 
+(defvar *dictionary-keys* nil)
+
 (defmacro restart-case-loop (form &body clauses)
   `(loop (restart-case (return ,form)
 	   ,@clauses)))
@@ -114,7 +116,7 @@ decoding.  The default is UTF-8."))
 	 (read (read-sequence array stream)))
     (if (= read length)
 	array
-	(restart-case (error "EOF before sting end")
+	(restart-case (error "EOF before string end")
 	  (continue () (adjust-array array read))))))
 
 (defun decode-string (stream)
@@ -142,8 +144,6 @@ decoding.  The default is UTF-8."))
   (let ((length (parse-integer (read-integers stream))))
     (must-read-char stream #\:)
     (must-read-octets stream length)))
-
-(defvar *dictionary-keys* nil)
 
 (defun decode-dictionary (stream)
   (must-read-char stream #\d)
