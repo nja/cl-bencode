@@ -20,7 +20,7 @@
   :author "Johan Andersson <nilsjohanandersson@gmail.com>"
   :license "MIT"
   :serial t
-  :depends-on (#:bencode #:hu.dwim.stefil)
+  :depends-on (#:bencode #:hu.dwim.stefil #:check-it)
   :components ((:file "test")))
 
 (defmethod perform ((o test-op) (c (eql (find-system :bencode-test))))

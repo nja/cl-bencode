@@ -1,12 +1,36 @@
 ;;; -*- Mode: Lisp -*-
 
 (defpackage #:bencode-test
-  (:use #:cl #:bencode #:hu.dwim.stefil)
+  (:use #:cl #:bencode #:hu.dwim.stefil #:check-it)
   (:export #:test-all))
 
 (in-package #:bencode-test)
 
 (defsuite* test-all)
+
+;;; Generated input.
+
+(def-generator any-string ()
+  (generator (map (lambda (x) (coerce x 'string))
+                  (list (character)))))
+
+(def-generator input ()
+  (generator (or (integer)
+                 (any-string)
+                 (list (input))
+                 (map (lambda (keys values)
+                        (let ((dict (make-hash-table :test 'equal)))
+                          (loop for k in keys
+                                for v in values
+                                do (setf (gethash k dict) v))
+                          dict))
+                      (list (any-string))
+                      (list (input))))))
+
+(deftest roundtrip-test ()
+  (is (check-it (generator (input))
+                (lambda (x)
+                  (equalp x (decode (encode x nil)))))))
 
 ;;; Integers
 
